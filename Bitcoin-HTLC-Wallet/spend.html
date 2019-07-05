@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<script src="bitcore.js"></script>
+	<script src="buffer.js"></script>
+</head>
+<body>
+	<h2>Spend Transaction</h2>
+	
+	privateKeyWIF:
+	<input
+		id="privateKeyWIF"
+		value="cUMox8ZpejP4KuKphz19aheKPqa4AEycGBvmmnEaoU7mtim4Lg7x"
+	>
+	
+	<br><br>
+
+	transaction number:
+	<input id="transactionNumber">
+
+	<br><br>
+
+	<input 
+		id="key" 
+		value="password"
+	>
+
+	<button
+		onclick="createTransaction()">
+		Create Transaction
+	</button>
+
+	<br><br><hr><br>
+
+	<div
+		id="displayTransaction"
+		style="word-wrap: break-word;"
+	></div>
+
+</body>
+
+</html>
+
+
+<script>
+
+	async function createTransaction() {
+
+		// get values from DOM
+		const privateKeyWIF = document.getElementById('privateKeyWIF').value
+		const transactionNumber = document.getElementById('transactionNumber').value
+		const key = document.getElementById('key').value
+
+        // convert wif to a private key
+		const privateKey = bitcore.PrivateKey.fromWIF(privateKeyWIF)
+		//const privateKey = document.getElementById('privateKeyWIF').value
+
+        // get public key
+        var myPublicKey = new bitcore.PublicKey(privateKey)
+
+        // convert priv key to address
+        const fromAddress = privateKey.toAddress().toString()
+        console.log(fromAddress)
+
+        // get utxo data to add to new transaction
+        const utxoData = await getUtxoData(transactionNumber)
+        //console.log('\n\nutxoData =', utxoData)
+
+        // get value 1921977
+        const inputAmount = utxoData.value_int
+
+        const scriptPubKey = utxoData.script_pub_key
+
+        const sequenceNumber = utxoData.sequence
+
+        // 1
+        const vout = utxoData.vout
+
+
+        const hashKey = bitcore.crypto.Hash.sha256(new Buffer(key)).toString('hex')
+
+        // https://bitcore.io/api/lib/unspent-output
+        const refundTransaction = new bitcore.Transaction().from({
+            txid: transactionNumber,
+            vout: vout,
+            scriptPubKey: new bitcore.Script(scriptPubKey).toHex(), //  https://github.com/bitpay/bitcore-lib/blob/master/docs/examples.md
+            satoshis: inputAmount,
+        })
+            .to(fromAddress, inputAmount) // or Copay: mqsscUaTAy3pjwgg7LVnQWr2dFCKphctM2
+            .lockUntilDate(Math.floor(Date.now()/1001)); // CLTV requires the transaction nLockTime to be >= the stack argument in the redeem script
+
+        refundTransaction.inputs[0].sequenceNumber = 0; // the CLTV opcode requires that the input's sequence number not be finalized
+
+        const signature = bitcore.Transaction.sighash.sign(refundTransaction, privateKey, bitcore.crypto.Signature.SIGHASH_ALL, 0, scriptPubKey);
+
+        // setup the scriptSig of the spending transaction to spend the p2sh-cltv-p2pkh redeem script
+        refundTransaction.inputs[0].setScript(
+            bitcore.Script.empty()
+                .add(signature.toTxFormat())
+                .add(new Buffer(myPublicKey.toString(), 'hex'))
+                .add(new Buffer(toHex(key).toString(), 'hex'))
+                .add('OP_TRUE') // choose the time-delayed refund code path
+        )
+
+        console.log(refundTransaction.toString())
+        document.getElementById('displayTransaction').innerHTML = refundTransaction.toString()
+    
+
+	}
+
+	//  https://testnet-api.smartbit.com.au/v1/blockchain/address/mpfNnLq357BjK5btmefSGT38PsQQgMkZXB
+	function getUtxoData (_transactionId) {
+	    return new Promise(resolve => {
+		fetch(`https://testnet-api.smartbit.com.au/v1/blockchain/tx/${_transactionId}`)
+			.then(response => {
+				return response.json()
+			}).then(data => {	
+		        return resolve({
+		            value_int: data.transaction.outputs[0].value_int,
+		            txid: _transactionId,
+		            script_pub_key: data.transaction.outputs[0].script_pub_key.hex,
+		            vout: data.transaction.outputs[0].n,
+		            sequence: data.transaction.inputs[0].sequence
+		        })
+		    })
+		})
+	}
+
+
+	function toHex(str) {
+	    var hex = '';
+	    for(var i=0;i<str.length;i++) {
+	        hex += ''+str.charCodeAt(i).toString(16);
+	    }
+	    return hex;
+	}
+
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
