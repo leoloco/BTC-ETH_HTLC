@@ -73,7 +73,7 @@
 		    scriptPubKey: new bitcore.Script(scriptPubKey).toHex(), //  https://github.com/bitpay/bitcore-lib/blob/master/docs/examples.md
 		    satoshis: inputAmount,
 		})
-		    .to(fromAddress, inputAmount) // send back to the original address for ease of testing only, the 1000 is the fee
+		    .to(fromAddress, inputAmount - 1000) // send back to the original address for ease of testing only, the 1000 is the fee
 		    .lockUntilDate(Math.floor(Date.now() / 1001)); // CLTV requires the transaction nLockTime to be >= the stack argument in the redeem script
 
 

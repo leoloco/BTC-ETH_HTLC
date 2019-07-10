@@ -72,13 +72,18 @@
 
 
     async function createTransaction () {
+
+        var timeLock = document.getElementById('timeLock').value
+        timeLock = parseInt(Math.floor(Date.now()/1000))+parseInt(timeLock)
+        console.log("Locked until :",  timeLock)
         
         // get values from DOM
         const privateKeyWIF = document.getElementById('privateKeyWIF').value
-        const outputAmount = document.getElementById('outputAmount').value
+        const outputAmount = parseInt(document.getElementById('outputAmount').value)
         const key = document.getElementById('key').value
         const toAddress = document.getElementById('toAddress').value
-        const timeLock = document.getElementById('timeLock').value
+        
+
         const metadata = document.getElementById('metadata').value
         // convert wif to a private key
         const privateKey = bitcore.PrivateKey.fromWIF(privateKeyWIF)
@@ -90,7 +95,7 @@
         const fromAddress = privateKey.toAddress().toString()
         console.log('\n\nfromAddress =', privateKey.toAddress().toString())
         // get utxo data to add to new transaction
-        const utxoData = await getUtxoData(fromAddress)
+        const utxoData = await getUtxoData(fromAddress, outputAmount)
         //console.log('\n\noutput =', output)
         // get transaction id 9ce9ceb57475b631a64e162b539a915122bda10510315ec6189316d502424fa8
         const oldTransaction = utxoData.txid
@@ -116,8 +121,7 @@
 
         const hashKey = bitcore.crypto.Hash.sha256(new Buffer(key)).toString('hex')
         console.log('\n\nhashKey = ', hashKey)
-        console.log("time now : ", Date.now());
-        console.log("Timelock : ", parseInt(Math.floor(Date.now()/1000)) + parseInt(timeLock) );
+
 
         // build the script
         var script = bitcore
@@ -128,7 +132,8 @@
             .add('OP_EQUALVERIFY')
             .add(bitcore.Script.buildPublicKeyHashOut(bitcore.Address.fromString(toAddress)))
             .add('OP_ELSE')
-            .add(bitcore.crypto.BN.fromNumber(parseInt(Math.floor(Date.now()/1000))+parseInt(timeLock)).toScriptNumBuffer())
+            .add(bitcore.crypto.BN.fromNumber(timeLock).toScriptNumBuffer())
+            //.add(bitcore.crypto.BN.fromNumber(1513412288).toScriptNumBuffer())
             .add('OP_CHECKLOCKTIMEVERIFY')
             .add('OP_DROP')
             .add(bitcore.Script.buildPublicKeyHashOut(bitcore.Address.fromString(fromAddress)))
@@ -162,7 +167,7 @@
 
 
 //  https://testnet-api.smartbit.com.au/v1/blockchain/address/mpfNnLq357BjK5btmefSGT38PsQQgMkZXB
-function getUtxoData(_address){
+function getUtxoData(_address, _value){
     return new Promise (resolve => {
 		fetch(`https://testnet-api.smartbit.com.au/v1/blockchain/address/${_address}`)
 			.then(response => {
@@ -172,11 +177,13 @@ function getUtxoData(_address){
 			const transactions = data.address.transactions
 			// loop through transactions
 			for (let i in transactions){
+                console.log("i is now : ", i)
 				// loop through the output of each transaction
 				for (let j in transactions[i].outputs){
 					// if output has BTC and it belongs to me
-					if (transactions[i].outputs[j].spend_txid !== 'null' && transactions[i].outputs[j].value_int > 0 && transactions[i].outputs[j].addresses[0] === _address) {
-						resolve({
+					if (transactions[i].outputs[j].spend_txid !== 'null' && transactions[i].outputs[j].value_int > _value && transactions[i].outputs[j].addresses[0] === _address) {
+						console.log("Hey i've discovered an UTXO of :",transactions[i].outputs[j]);
+                        resolve({
 							value_int: transactions[i].outputs[j].value_int,
 							txid: transactions[i].txid,
 							script_pub_key: transactions[i].outputs[j].script_pub_key.hex,

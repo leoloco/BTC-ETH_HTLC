@@ -53,8 +53,7 @@
 		const key = document.getElementById('key').value
 
         // convert wif to a private key
-		const privateKey = bitcore.PrivateKey.fromWIF(privateKeyWIF)
-		//const privateKey = document.getElementById('privateKeyWIF').value
+        const privateKey = bitcore.PrivateKey.fromWIF(privateKeyWIF)
 
         // get public key
         var myPublicKey = new bitcore.PublicKey(privateKey)
@@ -87,8 +86,8 @@
             scriptPubKey: new bitcore.Script(scriptPubKey).toHex(), //  https://github.com/bitpay/bitcore-lib/blob/master/docs/examples.md
             satoshis: inputAmount,
         })
-            .to(fromAddress, inputAmount) // or Copay: mqsscUaTAy3pjwgg7LVnQWr2dFCKphctM2
-            .lockUntilDate(Math.floor(Date.now()/1001)); // CLTV requires the transaction nLockTime to be >= the stack argument in the redeem script
+            .to(fromAddress, inputAmount - 1000) // or Copay: mqsscUaTAy3pjwgg7LVnQWr2dFCKphctM2
+            .lockUntilDate(Math.floor(Date.now() / 1001)); // CLTV requires the transaction nLockTime to be >= the stack argument in the redeem script
 
         refundTransaction.inputs[0].sequenceNumber = 0; // the CLTV opcode requires that the input's sequence number not be finalized
 
