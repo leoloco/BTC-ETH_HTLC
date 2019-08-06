@@ -133,7 +133,6 @@
             .add(bitcore.Script.buildPublicKeyHashOut(bitcore.Address.fromString(toAddress)))
             .add('OP_ELSE')
             .add(bitcore.crypto.BN.fromNumber(timeLock).toScriptNumBuffer())
-            //.add(bitcore.crypto.BN.fromNumber(1513412288).toScriptNumBuffer())
             .add('OP_CHECKLOCKTIMEVERIFY')
             .add('OP_DROP')
             .add(bitcore.Script.buildPublicKeyHashOut(bitcore.Address.fromString(fromAddress)))
@@ -156,8 +155,6 @@
             .change(fromAddress)
             .addData(metadata) // ETH_0x1234_0.5
             .sign(privateKey);
-
-
 		// display on signed transaction on screen
 		document.getElementById('displayTransaction').innerHTML = newTransaction;
 		console.log('newTransaction =', newTransaction.toString());
